@@ -20,10 +20,11 @@ on:
         description: "无论是否有更新，都强制编译固件"
         required: false
         default: "false"
-      ssh:
-        description: "是否开启 SSH 连接以调试 Actions"
-        required: false
-        default: "false"
+      manual_config:
+        description: "Manually generate XiaoMi-AX3600 config via SSH (y/n)"
+        default: "y"
+        required: true
+        
 # 取消注释以下内容以定期运行。这里的 cron 表达式不包含秒。
 #  schedule:
 #    - cron: 0 */18 * * *
@@ -163,12 +164,19 @@ jobs:
           cd openwrt/
           $GITHUB_WORKSPACE/$CUSTOM_SCRIPT_2
 
-      - name: SSH 连接到 GitHub Actions
-        uses: P3TERX/ssh2actions@main
-        if: github.event.inputs.ssh == 'true' || contains(github.event.action, 'ssh')
-        env:
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      # SSH 远程调试（tmate），自动进入 make menuconfig
+      - name: SSH 远程调试（tmate）进入 menuconfig
+        if: ${{ github.event.inputs.manual_config == 'y' }}
+        uses: mxschmitt/action-tmate@v3
+
+      - name: Upload .config from all possible locations
+        uses: actions/upload-artifact@v4
+        with:
+            name: config
+            path: |
+              $GITHUB_WORKSPACE/openwrt/.config
+              found.config
+              .config
 
       - name: 下载编译所需的软件包
         id: download-packages
